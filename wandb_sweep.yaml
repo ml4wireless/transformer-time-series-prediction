@@ -1,0 +1,23 @@
+description: time series forecasting transformer sweep
+program: transformer-multistep.py
+method: bayes
+metric:
+  name: val_loss
+  goal: minimize
+parameters:
+  transformer_n_layers:
+    distribution: int_uniform
+    min: 1
+    max: 4
+  transformer_feature_size:
+    distribution: int_uniform
+    min: 1
+    max: 30
+  optimizer_lr:
+    distribution: uniform
+    min: 0.0001
+    max: 0.05
+  optimizer_lr_decay:
+    distribution: uniform
+    min: 0.96
+    max: 0.999

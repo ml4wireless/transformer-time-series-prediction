@@ -8,6 +8,7 @@ import numpy as np
 import time
 import math
 from matplotlib import pyplot
+import argparse
 import wandb
 
 torch.manual_seed(0)
@@ -47,13 +48,13 @@ class PositionalEncoding(nn.Module):
        
 
 class TransAm(nn.Module):
-    def __init__(self,feature_size=250,num_layers=1,dropout=0.1):
+    def __init__(self, feature_size=250, num_layers=1, dropout=0.1, nhead=10):
         super(TransAm, self).__init__()
         self.model_type = 'Transformer'
         
         self.src_mask = None
         self.pos_encoder = PositionalEncoding(feature_size)
-        self.encoder_layer = nn.TransformerEncoderLayer(d_model=feature_size, nhead=10, dropout=dropout)
+        self.encoder_layer = nn.TransformerEncoderLayer(d_model=feature_size, nhead=nhead, dropout=dropout)
         self.transformer_encoder = nn.TransformerEncoder(self.encoder_layer, num_layers=num_layers)        
         self.decoder = nn.Linear(feature_size,1)
         self.init_weights()
@@ -232,30 +233,50 @@ if __name__ == "__main__":
     wandb_logs = {'train_loss': 0, 'val_loss': 0, 'epoch': 0, 'elapsed_mins': 0}
     elapsed_start_time = time.time()
 
+    # CLI args
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--transformer_feature_size', type=int, default=25,
+            help="Input feature dimension divided by num attention heads")
+    parser.add_argument('--transformer_n_attention_heads', type=int, default=10,
+            help="Number of attention heads in the transformer; must evenly "
+                 "divide the feature size")
+    parser.add_argument('--transformer_n_layers', type=int, default=1)
+    parser.add_argument('--transformer_dropout', type=float, default=0.1)
+    parser.add_argument('--optimizer_lr', type=float, default=0.005)
+    parser.add_argument('--optimizer_lr_decay', type=float, default=0.98)
+    parser.add_argument('--n_epochs', type=int, default=80)
+    #parser.add_argument('--batch_size', type=int, default=50)
+    args = parser.parse_args()
+
     train_data, val_data = get_data()
-    model = TransAm().to(device)
+    model = TransAm(args.transformer_feature_size * args.transformer_n_attention_heads,
+                    args.transformer_n_layers,
+                    args.transformer_dropout,
+                    args.transformer_n_attention_heads).to(device)
 
     criterion = nn.MSELoss()
-    lr = 0.005 
     #optimizer = torch.optim.SGD(model.parameters(), lr=lr)
-    optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
-    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 1.0, gamma=0.98)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=args.optimizer_lr)
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 1.0, gamma=args.optimizer_lr_decay)
 
     best_val_loss = float("inf")
-    epochs = 100 # The number of epochs
     best_model = None
+    should_plot = False
 
-    for epoch in range(1, epochs + 1):
+    for epoch in range(1, args.n_epochs + 1):
         epoch_start_time = time.time()
         train(train_data)
 
-        if(epoch % 10 is 0):
-            val_loss = plot_and_loss(model, val_data,epoch)
-            predict_future(model, val_data,200, epoch)
+        if should_plot:
+            if(epoch % 10 is 0):
+                val_loss = plot_and_loss(model, val_data,epoch)
+                predict_future(model, val_data,100, epoch)
+            else:
+                val_loss = evaluate(model, val_data)
+            train_loss = evaluate(model, train_data)
         else:
             val_loss = evaluate(model, val_data)
-
-        train_loss = evaluate(model, train_data)
+            train_loss = evaluate(model, train_data)
 
         print('-' * 89)
         print('| end of epoch {:3d} | time: {:5.2f}s | valid loss {:5.5f} | valid ppl {:8.2f}'.format(epoch, (time.time() - epoch_start_time),
