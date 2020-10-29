@@ -1,9 +1,14 @@
+# disable xwindows usage
+import matplotlib
+matplotlib.use('Agg')
+
 import torch
 import torch.nn as nn
 import numpy as np
 import time
 import math
 from matplotlib import pyplot
+import wandb
 
 torch.manual_seed(0)
 np.random.seed(0)
@@ -184,7 +189,7 @@ def plot_and_loss(eval_model, data_source,epoch):
     return total_loss / i
 
 
-def predict_future(eval_model, data_source,steps):
+def predict_future(eval_model, data_source,steps, epoch):
     eval_model.eval() 
     total_loss = 0.
     test_result = torch.Tensor(0)    
@@ -204,7 +209,7 @@ def predict_future(eval_model, data_source,steps):
     pyplot.plot(data[:input_window],color="blue")
     pyplot.grid(True, which='both')
     pyplot.axhline(y=0, color='k')
-    pyplot.savefig('graph/transformer-future%d.png'%steps)
+    pyplot.savefig(f"graph/transformer-future{steps}-epoch{epoch}.png")
     pyplot.close()
         
 # entweder ist hier ein fehler im loss oder in der train methode, aber die ergebnisse sind unterschiedlich 
@@ -221,43 +226,56 @@ def evaluate(eval_model, data_source):
             total_loss += len(data[0])* criterion(output, targets).cpu().item()
     return total_loss / len(data_source)
 
-train_data, val_data = get_data()
-model = TransAm().to(device)
+if __name__ == "__main__":
+    # init data logger and hyperparam sweep controller
+    wandb.init(project="time-series-transformer", entity="ucb-capstone-2020")
+    wandb_logs = {'train_loss': 0, 'val_loss': 0, 'epoch': 0, 'elapsed_mins': 0}
+    elapsed_start_time = time.time()
 
-criterion = nn.MSELoss()
-lr = 0.005 
-#optimizer = torch.optim.SGD(model.parameters(), lr=lr)
-optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
-scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 1.0, gamma=0.98)
+    train_data, val_data = get_data()
+    model = TransAm().to(device)
 
-best_val_loss = float("inf")
-epochs = 100 # The number of epochs
-best_model = None
+    criterion = nn.MSELoss()
+    lr = 0.005 
+    #optimizer = torch.optim.SGD(model.parameters(), lr=lr)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 1.0, gamma=0.98)
 
-for epoch in range(1, epochs + 1):
-    epoch_start_time = time.time()
-    train(train_data)
-    
-    
-    if(epoch % 10 is 0):
-        val_loss = plot_and_loss(model, val_data,epoch)
-        predict_future(model, val_data,200)
-    else:
-        val_loss = evaluate(model, val_data)
-        
-    print('-' * 89)
-    print('| end of epoch {:3d} | time: {:5.2f}s | valid loss {:5.5f} | valid ppl {:8.2f}'.format(epoch, (time.time() - epoch_start_time),
-                                     val_loss, math.exp(val_loss)))
-    print('-' * 89)
+    best_val_loss = float("inf")
+    epochs = 100 # The number of epochs
+    best_model = None
 
-    #if val_loss < best_val_loss:
-    #    best_val_loss = val_loss
-    #    best_model = model
+    for epoch in range(1, epochs + 1):
+        epoch_start_time = time.time()
+        train(train_data)
 
-    scheduler.step() 
+        if(epoch % 10 is 0):
+            val_loss = plot_and_loss(model, val_data,epoch)
+            predict_future(model, val_data,200, epoch)
+        else:
+            val_loss = evaluate(model, val_data)
 
-#src = torch.rand(input_window, batch_size, 1) # (source sequence length,batch size,feature number) 
-#out = model(src)
-#
-#print(out)
-#print(out.shape)
+        train_loss = evaluate(model, train_data)
+
+        print('-' * 89)
+        print('| end of epoch {:3d} | time: {:5.2f}s | valid loss {:5.5f} | valid ppl {:8.2f}'.format(epoch, (time.time() - epoch_start_time),
+                                         val_loss, math.exp(val_loss)))
+        print('-' * 89)
+
+        wandb_logs = {
+                'train_loss': round(train_loss, 3), 'val_loss': round(val_loss, 3),
+                'epoch': epoch, 'elapsed_time_mins': round((time.time() - elapsed_start_time)/60, 3),
+                'time_per_epoch_secs': round(time.time() - epoch_start_time, 3)}
+        wandb.log(wandb_logs)
+
+        #if val_loss < best_val_loss:
+        #    best_val_loss = val_loss
+        #    best_model = model
+
+        scheduler.step()
+
+    #src = torch.rand(input_window, batch_size, 1) # (source sequence length,batch size,feature number)
+    #out = model(src)
+    #
+    #print(out)
+    #print(out.shape)

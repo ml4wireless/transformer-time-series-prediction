@@ -4,3 +4,4 @@ traindata.pt
 .ipynb_checkpoints
 graph
 transformer-gif
+wandb
