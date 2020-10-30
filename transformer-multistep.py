@@ -228,11 +228,6 @@ def evaluate(eval_model, data_source):
     return total_loss / len(data_source)
 
 if __name__ == "__main__":
-    # init data logger and hyperparam sweep controller
-    wandb.init(project="time-series-transformer", entity="ucb-capstone-2020")
-    wandb_logs = {'train_loss': 0, 'val_loss': 0, 'epoch': 0, 'elapsed_mins': 0}
-    elapsed_start_time = time.time()
-
     # CLI args
     parser = argparse.ArgumentParser()
     parser.add_argument('--transformer_feature_size', type=int, default=25,
@@ -247,6 +242,12 @@ if __name__ == "__main__":
     parser.add_argument('--n_epochs', type=int, default=80)
     #parser.add_argument('--batch_size', type=int, default=50)
     args = parser.parse_args()
+
+    # init data logger and hyperparam sweep controller
+    wandb.init(project="time-series-transformer", entity="ucb-capstone-2020",
+               config=args)
+    wandb_logs = {'train_loss': 0, 'val_loss': 0, 'epoch': 0, 'elapsed_mins': 0}
+    elapsed_start_time = time.time()
 
     train_data, val_data = get_data()
     model = TransAm(args.transformer_feature_size * args.transformer_n_attention_heads,
