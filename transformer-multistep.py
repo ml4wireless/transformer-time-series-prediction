@@ -285,7 +285,7 @@ if __name__ == "__main__":
         print('-' * 89)
 
         wandb_logs = {
-                'train_loss': round(train_loss, 3), 'val_loss': round(val_loss, 3),
+                'train_loss': train_loss, 'val_loss': val_loss,
                 'epoch': epoch, 'elapsed_time_mins': round((time.time() - elapsed_start_time)/60, 3),
                 'time_per_epoch_secs': round(time.time() - epoch_start_time, 3)}
         wandb.log(wandb_logs)
