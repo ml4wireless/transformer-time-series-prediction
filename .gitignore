@@ -6,3 +6,4 @@ graph
 transformer-gif
 wandb
 graph*
+runs.sh
