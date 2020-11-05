@@ -239,7 +239,7 @@ if __name__ == "__main__":
     parser.add_argument('--transformer_dropout', type=float, default=0.1)
     parser.add_argument('--optimizer_lr', type=float, default=0.005)
     parser.add_argument('--optimizer_lr_decay', type=float, default=0.98)
-    parser.add_argument('--n_epochs', type=int, default=80)
+    parser.add_argument('--n_epochs', type=int, default=100)
     #parser.add_argument('--batch_size', type=int, default=50)
     args = parser.parse_args()
 
@@ -262,7 +262,7 @@ if __name__ == "__main__":
 
     best_val_loss = float("inf")
     best_model = None
-    should_plot = False
+    should_plot = True
 
     for epoch in range(1, args.n_epochs + 1):
         epoch_start_time = time.time()
@@ -271,7 +271,7 @@ if __name__ == "__main__":
         if should_plot:
             if(epoch % 10 is 0):
                 val_loss = plot_and_loss(model, val_data,epoch)
-                predict_future(model, val_data,100, epoch)
+                predict_future(model, val_data,200, epoch)
             else:
                 val_loss = evaluate(model, val_data)
             train_loss = evaluate(model, train_data)

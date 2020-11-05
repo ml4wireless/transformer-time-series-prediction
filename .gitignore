@@ -5,3 +5,4 @@ traindata.pt
 graph
 transformer-gif
 wandb
+graph*
