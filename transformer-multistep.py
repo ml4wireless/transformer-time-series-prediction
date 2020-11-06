@@ -254,6 +254,7 @@ if __name__ == "__main__":
     parser.add_argument('--optimizer_lr', type=float, default=0.005)
     parser.add_argument('--optimizer_lr_decay', type=float, default=0.98)
     parser.add_argument('--n_epochs', type=int, default=100)
+    parser.add_argument('--plotting_period', type=int, default=1)
     #parser.add_argument('--batch_size', type=int, default=50)
     args = parser.parse_args()
 
@@ -282,16 +283,11 @@ if __name__ == "__main__":
         epoch_start_time = time.time()
         train(train_data)
 
-        if should_plot:
-            if(epoch % 10 is 0):
-                val_loss = plot_and_loss(model, val_data,epoch)
-                predict_future(model, val_data,200, epoch)
-            else:
-                val_loss = evaluate(model, val_data)
-            train_loss = evaluate(model, train_data)
-        else:
-            val_loss = evaluate(model, val_data)
-            train_loss = evaluate(model, train_data)
+        if should_plot and epoch % args.plotting_period is 0:
+                predict_future(model, val_data, 200, epoch)
+
+        val_loss = evaluate(model, val_data)
+        train_loss = evaluate(model, train_data)
 
         print('-' * 89)
         print('| end of epoch {:3d} | time: {:5.2f}s | valid loss {:5.5f} | valid ppl {:8.2f}'.format(epoch, (time.time() - epoch_start_time),
